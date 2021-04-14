@@ -1,0 +1,326 @@
+# write your code here
+import random
+class TicTacToe:
+    box = [['|', ' ', ' ', ' ', '|'],
+           ['|', ' ', ' ', ' ', '|'],
+           ['|', ' ', ' ', ' ', '|']]
+    move = [[0, 1], [0, 2], [0, 3],
+                 [1, 1], [1, 2], [1, 3],
+                 [2, 1], [2, 2], [2, 3]]
+    present_move = "X"
+    def __init__(self,m1,m2):
+        if m1=='medium' or m2 == 'medium':
+            Medium(m1, m2)
+            return
+
+        if m1 =='hard' or m2 == 'hard':
+            Hard(m1,m2)
+            return
+
+        self.display()
+        if(m1 == "easy" and m2 =='easy'):
+            self.fullauto()
+        elif(m1 == "user" and m2 == "user"):
+            self.fullmanual()
+        elif (m1 == "easy" and m2 == "user"):
+            self.auto_manual(1)
+        else:
+            self.auto_manual(0)
+
+    def auto_manual(self, m):
+        x = m
+        while(self.check_state()):
+            if(x):
+                self.program_move()
+                x = 0
+            else:
+                self.user_move()
+                x = 1
+
+
+    def fullauto(self):
+        while(self.check_state()):
+            self.program_move()
+    def fullmanual(self):
+        while(self.check_state()):
+            self.user_move()
+    def user_move(self):
+        move = list(map(int, input("Enter the coordinates: ").split() ))
+        i = move[0] - 1
+        j = move[1]
+        self.move.remove([i, j])
+        self.box[i][j] = self.present_move
+        self.display()
+        self.present_move = "O" if (self.present_move == "X") else "X"
+    def program_move(self):
+        print("Making move level \"easy\"")
+        cell = random.choice(self.move)
+        self.move.remove(cell)
+        self.box[cell[0]][cell[1]] = self.present_move
+        self.display()
+        self.present_move = "O" if (self.present_move == "X") else "X"
+
+    def check_state(self):
+        def XorO(c):
+            if (c == 0):
+                print("O wins")
+                return 0
+            else:
+                print("X wins")
+                return 0
+
+        #checking rows
+        for i in self.box:
+            c = i.count("X")
+            if(c == 0 or c==3) and i.count(" ")== 0:
+                if XorO(c) == 0:
+                    return 0
+
+        #checking columns
+        for j in range(1,4):
+           # print('checking columd')
+            count_x = 0
+            count_o = 0
+            for i in range(3):
+                if (self.box[i][j] == "X"):
+                    count_x += 1
+                elif (self.box[i][j] == "O"):
+                    count_o += 1
+            #print(count_x,count_o)
+            if (count_x == 3):
+                print("X wins")
+                return 0
+            elif (count_o == 3):
+                print("O wins")
+                return 0
+                #check diagonals
+        d1 = [self.box[0][1], self.box[1][2], self.box[2][3]]
+        c = d1.count("X")
+        f = " " not in d1
+        if (c == 0 or c == 3) and f:
+            XorO(c)
+            return 0
+        d2 = [self.box[0][3], self.box[1][2], self.box[2][1]]
+        c = d2.count("X")
+        f = " " not in d2
+        if (c == 0 or c == 3) and f:
+            XorO(c)
+            return 0
+        for i in self.box:
+            if (i.count(" ") > 0 ):
+                return 1
+
+        print("DRAW")
+
+    def display(self):
+        print("---------")
+        for i in self.box:
+            for j in i:
+                print(j, end=" ")
+            print()
+        print("---------")
+
+class Medium(TicTacToe):
+    def __init__(self,m1,m2):
+        self.display()
+        if (m1 == "medium" and m2 == 'medium'):
+            self.fullauto()
+        elif (m1 == "medium" and m2 == "user"):
+            self.auto_manual(1)
+        else:
+            self.auto_manual(0)
+
+
+    def program_move(self):
+        print("Making move level \"medium\"")
+        x = self.present_move
+        #check if u can make a move
+        if(self.check_row(x) == 1 or self.check_columns(x) == 1 or self.check_diagonals(x) == 1):
+            return 1
+
+        ## to block opponent move
+        x = "O" if (self.present_move == "X") else "X"
+        if (self.check_row(x) == 1 or self.check_columns(x) == 1 or self.check_diagonals(x) == 1):
+            return 1
+        cell = random.choice(self.move)
+        self.make_move(cell[0],cell[1])
+        return 1
+    def check_row(self,x):
+        for row, column in enumerate(self.box):
+            if column.count(x) == 2 and ' ' in column:
+                c = column.index(" ")
+                self.make_move(row, c)
+                return 1
+    def check_columns(self,x):
+        for j in range(1, 4):
+            count_move = 0
+            count_space = 0
+            for i in range(3):
+                if (self.box[i][j] == x):
+                    count_move += 1
+                elif(self.box[i][j] == " "):
+                    count_space += 1
+                    y = i
+
+            if (count_move == 2 and count_space == 1):
+                #print(y,j)
+                self.make_move(y,j)
+                return 1
+
+    def check_diagonals(self,x):
+        d1 = [self.box[0][1], self.box[1][2], self.box[2][3]]
+        if d1.count(x) == 2 and d1.count(" ") == 1:
+            c = d1.index(" ")
+            if c == 0:
+                self.make_move(0,1)
+            elif c == 1:
+                self.make_move(1,2)
+            else:
+                self.make_move(2,3)
+            return 1
+
+        d2 = [self.box[0][3], self.box[1][2], self.box[2][1]]
+        if d2.count(x) == 2 and d2.count(" ") == 1:
+            c = d2.index(" ")
+            if c == 0:
+                self.make_move(0,3)
+            elif c == 1:
+                self.make_move(1,2)
+            else:
+                self.make_move(2,1)
+            return 1
+
+    def make_move(self,x,y):
+        cell = [x, y]
+        self.move.remove(cell)
+        # print(self.move)
+        self.box[cell[0]][cell[1]] = self.present_move
+        self.display()
+        self.present_move = "O" if (self.present_move == "X") else "X"
+        return 0
+
+class Hard(TicTacToe):
+    def __init__(self,m1,m2):
+        self.display()
+        if (m1 == "hard" and m2 == 'hard'):
+            self.fullauto()
+        elif (m1 == "hard" and m2 == "user"):
+            self.auto_manual(1)
+        else:
+            self.auto_manual(0)
+
+    def program_move(self):
+        print("Making move level \"hard\"")
+
+
+
+        board = []
+        for i in self.box :
+            for j in i:
+                if j=='|':
+                    continue
+                else:
+                    board.append(j)
+        for i,j in enumerate(board):
+            if j==" ":
+                board[i] = i
+
+        player_move = self.present_move
+        opp_move = "O" if (player_move == "X") else "X"
+
+
+        def emptyIndexies(board):
+            return [i for i in board if(i !='X' and i !='O')]
+
+        def winning(board, player):
+            if(
+                (board[0] == player and board[1] == player and board[2] == player) or
+                (board[3] == player and board[4] == player and board[5] == player) or
+                (board[6] == player and board[7] == player and board[8] == player) or
+                (board[0] == player and board[3] == player and board[6] == player) or
+                (board[1] == player and board[4] == player and board[7] == player) or
+                (board[2] == player and board[5] == player and board[8] == player) or
+                (board[0] == player and board[4] == player and board[8] == player) or
+                (board[2] == player and board[4] == player and board[6] == player)):
+
+                return True
+
+            return False
+
+        def minimax(newBoard, player):
+
+            availSpots = emptyIndexies(newBoard)
+            if (winning(newBoard,opp_move )):
+                return {'score': -10}
+
+            elif (winning(newBoard, player_move)):
+                return {'score': 10}
+
+            elif (len(availSpots)) == 0:
+                return {'score': 0}
+
+            moves = []
+
+            for i in range(len(availSpots)):
+                move = {}
+                move['index'] = newBoard[availSpots[i]]
+
+                newBoard[availSpots[i]]  = player
+
+                if player == player_move:
+                    result = minimax(newBoard,opp_move)
+                    move['score'] = result['score']
+                else:
+                    result = minimax(newBoard, player_move)
+                    move['score'] = result['score']
+
+                newBoard[availSpots[i]] = move['index']
+
+                moves.append(move)
+
+            bestMove = None
+            if(player == player_move):
+                bestScore = -10000
+                for  i in range(len(moves)):
+                    if(moves[i]['score'] > bestScore):
+                        bestScore= moves[i]['score']
+                        bestMove = i
+            else:
+                bestScore = 10000
+                for i in range(len(moves)):
+                    if (moves[i]['score'] < bestScore):
+                        bestScore = moves[i]['score']
+                        bestMove = i
+
+            return moves[bestMove]
+        temp2 = minimax(board,player_move)
+        # print("temp2", temp2)
+        # print("moves :",self.move)
+        temp = self.move[temp2['index']]
+        # print(board)
+        # print(temp)
+        return self.make_move_hard(temp[0],temp[1])
+    def make_move_hard(self,x,y):
+        cell = [x, y]
+        self.box[cell[0]][cell[1]] = self.present_move
+        self.display()
+        self.present_move = "O" if (self.present_move == "X") else "X"
+        return 0
+    def user_move(self):
+        move = list(map(int, input("Enter the coordinates: ").split() ))
+        i = move[0] - 1
+        j = move[1]
+        self.box[i][j] = self.present_move
+        self.display()
+        self.present_move = "O" if (self.present_move == "X") else "X"
+
+while(1):
+    x = input("Input command: ").split()
+    if x[0]=='exit' :
+        exit()
+    elif len(x)<3 :
+        print("Bad parameters!")
+    else:
+        g = TicTacToe(x[1], x[2])
+
+
