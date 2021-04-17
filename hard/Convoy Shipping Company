@@ -1,0 +1,170 @@
+
+import pandas as pd
+import re
+import sqlite3
+import json
+from lxml import etree
+from math import ceil
+
+class Convoy:
+    def __init__(self):
+        x = input("Input file name\n")
+        if(x.endswith('s3db')):
+            self.create_json(x)
+            self.create_xls(x)
+
+        elif(x.endswith('xlsx')):
+                self.convert_xlsx_to_csv(x)
+                x = self.correct_csv(x)
+                x = self.create_database(x)
+                x = self.create_json(x)
+                x = self.create_xls(x)
+
+        else:
+            if x.split('.')[0][-1] != ']':
+                x = self.correct_csv(x)
+            x = self.create_database(x)
+            x = self.create_json(x)
+            x = self.create_xls(x)
+
+    def convert_xlsx_to_csv(self,file_name):
+        x = file_name
+        df = pd.read_excel(x, sheet_name='Vehicles', dtype=str)
+        df.to_csv(f'{x.split(".")[0]}.csv', index=False)
+        l = (df.shape)[0]
+        if l == 1:
+            print(f"1 line was added to {x.split('.')[0]}.csv")
+        else:
+            print(f"{l} lines were added to {x.split('.')[0]}.csv")
+
+    def correct_csv(self,file):
+        name = file.split('.')[0]
+        x = name + ".csv"
+        count = 0
+        df = pd.read_csv(x, dtype=str)
+        for col in df.columns:
+            for i, j in enumerate(df[col]):
+                if not re.search('[a-zA-Z]', j) is None:
+                    temp = re.findall('[0-9]+', j)
+                    df[col][i] = temp[0]
+                    count += 1
+        name = name+"[CHECKED].csv"
+        df.to_csv(f'{name}',index=0)
+        if count > 0:
+            if count ==1:
+                s = "1 cell was "
+            else:
+                s = f'{count} cells were '
+            print(s+f'corrected in {name}')
+        return name
+
+    def create_database(self,file_name):
+        x = file_name.split(".")[0]
+        name = x[:-9]
+        conn = sqlite3.connect(f'{name}.s3db')
+        cursor_name = conn.cursor()
+
+        df = pd.read_csv(file_name, dtype=str)
+        s = (df.shape)[0]
+        score = []
+        for i in range(s):
+            points = 0
+            x = df.iloc[i]
+            fuel_consumed = 4.5 * int(x.fuel_consumption)
+            temp = int(x.engine_capacity)
+            if fuel_consumed > temp:
+                points += ceil((fuel_consumed - temp) / temp)
+            else:
+                points += 2
+            points += 2 if fuel_consumed <= 230 else 1
+            points += 2 if int(x.maximum_load) >= 20 else 0
+            score.append(points)
+        df['score'] = score
+        command = "CREATE TABLE convoy ("
+        for i in df.columns:
+            command += f"{i} Integer NOT NULL,"
+        command += "PRIMARY KEY (vehicle_id));"
+
+        cursor_name.execute(command)
+        for i in range(s):
+            values = []
+            for j in df.iloc[i]:
+                values.append(int(j))
+            values = tuple(values)
+            command = f"INSERT INTO convoy VALUES {values}"
+            cursor_name.execute(command)
+        conn.commit()
+        if s == 1:
+            out = "1 record was inserted into "
+        else:
+            out = f"{s} records were inserted into "
+        name = f"{name}.s3db"
+        print(out + name)
+        return name
+
+    def create_json(self,file_name):
+        x = file_name.split(".")[0]
+        name = x
+        conn = sqlite3.connect(f'{name}.s3db')
+        SQL_Query = pd.read_sql_query(
+            '''select vehicle_id ,engine_capacity, fuel_consumption ,maximum_load 
+            from convoy where score>3''', conn)
+        df = pd.DataFrame(SQL_Query)
+        con_dict = {'convoy' : []}
+        s = (df.shape)[0]
+        for i in range(s):
+            temp = {}
+            x = df.iloc[i]
+            # print(x.items())
+            for i, j in x.items():
+                temp[i] = j
+            con_dict['convoy'].append(temp)
+        with open(f"{name}.json", 'w') as f:
+            json.dump(con_dict, f)
+        if s == 1:
+            out = "1 vehicle was saved into "
+        else:
+            out = f"{s} vehicles were saved into "
+        name = f"{name}.json"
+        print(out + name)
+        return name
+
+    def create_xls(self,file_name):
+        x = file_name.split(".")[0]
+        name = x
+        xml_string = "<convoy>"
+        conn = sqlite3.connect(f'{name}.s3db')
+        SQL_Query = pd.read_sql_query(
+             '''select vehicle_id ,engine_capacity, fuel_consumption ,maximum_load 
+            from convoy where score<=3''', conn)
+        df = pd.DataFrame(SQL_Query)
+        s = (df.shape)[0]
+        for i in range(s):
+            temp = "<vehicle>"
+            x = df.iloc[i]
+            # print(x.items())
+            for i, j in x.items():
+                temp += f"<{i}>{j}</{i}>"
+            temp += "</vehicle>"
+            xml_string += temp
+        xml_string += " </convoy>"
+        # print(xml_string)
+        root = etree.fromstring(xml_string)
+        # print("root")
+        # etree.dump(root)
+        tree = etree.ElementTree(root) # create an instance of ElementTree in order to save it
+        name = f"{name}.xml"
+        tree.write(name)
+        if s == 1:
+            out = "1 vehicle was saved into "
+        else:
+            out = f"{s} vehicles were saved into "
+        name = f"{name}.xml"
+        print(out + name)
+        return name
+
+Convoy()
+
+
+
+
